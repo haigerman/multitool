@@ -43,6 +43,15 @@ jobs:
           echo "name=$NAME" >> "$GITHUB_OUTPUT"
           echo "code=$CODE" >> "$GITHUB_OUTPUT"
 
+      - name: Speedtest-Schlüssel prüfen
+        env:
+          SPEEDTEST_KEY: ${{ secrets.SPEEDTEST_KEY }}
+        run: |
+          if [ -z "$SPEEDTEST_KEY" ]; then
+            echo "::error::Secret SPEEDTEST_KEY fehlt – ohne ihn würde der Server den Speedtest abweisen. Kein Release."
+            exit 1
+          fi
+
       - name: Signaturschlüssel bereitstellen
         env:
           SIGNING_KEYSTORE_BASE64: ${{ secrets.SIGNING_KEYSTORE_BASE64 || secrets.KEYSTORE_BASE64 }}
@@ -59,6 +68,7 @@ jobs:
           SIGNING_KEYSTORE_PASSWORD: ${{ secrets.SIGNING_KEYSTORE_PASSWORD || secrets.KEYSTORE_PASSWORD }}
           SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS || secrets.KEY_ALIAS }}
           SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD || secrets.KEY_PASSWORD }}
+          SPEEDTEST_KEY: ${{ secrets.SPEEDTEST_KEY }}
         run: |
           chmod +x gradlew
           ./gradlew --no-daemon assembleRelease \

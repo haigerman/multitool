@@ -21,6 +21,7 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicLong
 import kotlin.coroutines.coroutineContext
 import kotlin.random.Random
+import me.winterkind.multitool.BuildConfig
 
 /** Test server. See server/README.md for the nginx setup on home.winterkind.me. */
 object SpeedtestServer {
@@ -28,6 +29,8 @@ object SpeedtestServer {
     const val HOST = "home.winterkind.me"
     const val LOCATION = "Oracle Cloud, Niederlande"
 }
+
+class SpeedtestException(message: String) : Exception(message)
 
 data class PingResult(val pingMs: Double, val jitterMs: Double)
 
@@ -47,6 +50,10 @@ class SpeedtestEngine(
         .readTimeout(15, TimeUnit.SECONDS)
         .writeTimeout(15, TimeUnit.SECONDS)
         .retryOnConnectionFailure(false)
+        // Every request carries the access key; without it the server answers 404.
+        .addInterceptor { chain ->
+            chain.proceed(chain.request().newBuilder().header("X-Intrepid-Key", BuildConfig.SPEEDTEST_KEY).build())
+        }
         .build()
 
     private fun url(path: String) = "${SpeedtestServer.BASE_URL}/$path?r=${Random.nextLong().toULong()}"
@@ -59,7 +66,7 @@ class SpeedtestEngine(
             val req = Request.Builder().url(url("ping")).header("Cache-Control", "no-cache").build()
             val start = SystemClock.elapsedRealtimeNanos()
             client.newCall(req).execute().use { resp ->
-                check(resp.isSuccessful) { "Ping: HTTP ${resp.code}" }
+                checkResponse(resp.code, "Ping")
                 resp.body?.bytes()
             }
             val ms = (SystemClock.elapsedRealtimeNanos() - start) / 1e6
@@ -84,7 +91,12 @@ class SpeedtestEngine(
                 calls += call
                 try {
                     call.execute().use { resp ->
-                        check(resp.isSuccessful) { "Download: HTTP ${resp.code}" }
+                        if (resp.code == 429) {
+                            // Server limit (4 connections per IP); old connections are still closing.
+                            delay(300)
+                            return@use
+                        }
+                        checkResponse(resp.code, "Download")
                         val source = resp.body!!.source()
                         val buf = ByteArray(64 * 1024)
                         val stream = source.inputStream()
@@ -129,7 +141,9 @@ class SpeedtestEngine(
                 val call = client.newCall(req)
                 calls += call
                 try {
-                    call.execute().use { resp -> check(resp.isSuccessful) { "Upload: HTTP ${resp.code}" } }
+                    call.execute().use { resp ->
+                        if (resp.code == 429) delay(300) else checkResponse(resp.code, "Upload")
+                    }
                 } catch (e: IOException) {
                     // Server closed early after receiving data: fine, start the next request.
                     if (sent == 0L || !job.isActive) throw e
@@ -138,6 +152,15 @@ class SpeedtestEngine(
                 }
             }
         }
+
+    private fun checkResponse(code: Int, what: String) {
+        when {
+            code in 200..299 -> Unit
+            code == 404 -> throw SpeedtestException("Zugriff verweigert – Schlüssel passt nicht zum Server")
+            code == 429 -> throw SpeedtestException("Server-Limit erreicht – bitte kurz warten und erneut testen")
+            else -> throw SpeedtestException("$what: HTTP $code")
+        }
+    }
 
     /**
      * Runs [streams] workers for [durationMs]. The first [warmupMs] (TCP slow start) are excluded

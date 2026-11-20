@@ -101,18 +101,31 @@ fun LAutoText(
     color: Color = Lcars.Orange,
     weight: FontWeight = FontWeight.Normal,
     align: TextAlign? = null,
+    /**
+     * If set, the size is fitted to the widest of these strings instead of [text] and therefore
+     * stays constant while the text changes (e.g. a ticking clock).
+     */
+    fitTexts: List<String>? = null,
 ) {
     val measurer = rememberTextMeasurer()
     val upper = text.uppercase()
+    val candidates = fitTexts?.map { it.uppercase() } ?: listOf(upper)
     BoxWithConstraints(modifier) {
         val maxPx = constraints.maxWidth
-        var size = maxSize
-        if (constraints.hasBoundedWidth) {
-            while (size.value > minSize.value) {
-                val w = measurer.measure(upper, lcarsText(size, color, weight), maxLines = 1, softWrap = false).size.width
-                if (w <= maxPx) break
-                size = (size.value - 1f).sp
+        val bounded = constraints.hasBoundedWidth
+        val size = remember(maxPx, bounded, candidates, maxSize, minSize, weight) {
+            var s = maxSize
+            if (bounded) {
+                while (s.value > minSize.value) {
+                    val style = lcarsText(s, color, weight)
+                    val w = candidates.maxOf {
+                        measurer.measure(it, style, maxLines = 1, softWrap = false).size.width
+                    }
+                    if (w <= maxPx) break
+                    s = (s.value - 1f).sp
+                }
             }
+            s
         }
         Text(
             text = upper,

@@ -32,6 +32,9 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 import kotlin.math.abs
 
+/** Every digit in every position: the font size fits the widest possible time and never changes. */
+private val CLOCK_FIT_TEXTS = (0..9).map { d -> "$d$d:$d$d:$d$d" }
+
 private val timeFmt = DateTimeFormatter.ofPattern("HH:mm:ss")
 private val dateFmt = DateTimeFormatter.ofPattern("EEEE, dd.MM.yyyy", Locale.GERMAN)
 private val zoneFmt = DateTimeFormatter.ofPattern("zzz", Locale.GERMAN)
@@ -78,6 +81,7 @@ fun ClockScreen(vm: ClockViewModel, state: ClockState) {
         LAutoText(
             timeFmt.format(zoned), Modifier.fillMaxWidth(),
             maxSize = 72.sp, minSize = 32.sp, color = Lcars.Orange, weight = FontWeight.Bold,
+            fitTexts = CLOCK_FIT_TEXTS,
         )
         LText("${dateFmt.format(zoned)}  ${zoneFmt.format(zoned)}", size = 18.sp, color = Lcars.Tan)
 

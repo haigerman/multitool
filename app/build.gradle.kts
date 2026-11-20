@@ -15,6 +15,10 @@ android {
     compileSdk = 35
 
     defaultConfig {
+        // Access key for the speedtest server, from the GitHub secret SPEEDTEST_KEY.
+        // Never committed: the repository is public.
+        val speedtestKey = (System.getenv("SPEEDTEST_KEY") ?: "").trim()
+        buildConfigField("String", "SPEEDTEST_KEY", "\"$speedtestKey\"")
         applicationId = "me.winterkind.multitool"
         minSdk = 26
         targetSdk = 35
@@ -53,6 +57,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 

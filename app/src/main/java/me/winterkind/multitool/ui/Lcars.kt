@@ -7,6 +7,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
@@ -29,6 +30,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -84,6 +86,42 @@ fun LText(
         textAlign = align,
         maxLines = maxLines,
     )
+}
+
+/**
+ * Single-line text that shrinks its font size (down to [minSize]) until it fits the available
+ * width, so long labels and the big clock never wrap on narrow screens.
+ */
+@Composable
+fun LAutoText(
+    text: String,
+    modifier: Modifier = Modifier,
+    maxSize: TextUnit = 18.sp,
+    minSize: TextUnit = 10.sp,
+    color: Color = Lcars.Orange,
+    weight: FontWeight = FontWeight.Normal,
+    align: TextAlign? = null,
+) {
+    val measurer = rememberTextMeasurer()
+    val upper = text.uppercase()
+    BoxWithConstraints(modifier) {
+        val maxPx = constraints.maxWidth
+        var size = maxSize
+        if (constraints.hasBoundedWidth) {
+            while (size.value > minSize.value) {
+                val w = measurer.measure(upper, lcarsText(size, color, weight), maxLines = 1, softWrap = false).size.width
+                if (w <= maxPx) break
+                size = (size.value - 1f).sp
+            }
+        }
+        Text(
+            text = upper,
+            style = lcarsText(size, color, weight),
+            textAlign = align,
+            maxLines = 1,
+            softWrap = false,
+        )
+    }
 }
 
 /**
@@ -193,7 +231,7 @@ fun LcarsPill(
             .padding(horizontal = 18.dp, vertical = 2.dp),
         contentAlignment = Alignment.CenterEnd,
     ) {
-        LText(label, size = 18.sp, color = Lcars.Black, weight = FontWeight.Bold, maxLines = 1)
+        LAutoText(label, maxSize = 18.sp, color = Lcars.Black, weight = FontWeight.Bold, align = TextAlign.End)
     }
 }
 

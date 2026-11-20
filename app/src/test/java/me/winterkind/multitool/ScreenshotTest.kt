@@ -78,4 +78,13 @@ class ScreenshotTest {
             samples = listOf(r, r.copy(server = "ptbtime2.ptb.de", offsetMs = 1236, roundTripMs = 21)))
         LcarsFrame(Section.CLOCK, {}, state.offsetMs, true) { ClockScreen(ClockViewModel(), state) }
     }
+
+    /** Narrow phone (360 dp): clock and button label must stay on one line. */
+    @Test
+    fun clockNarrow() {
+        paparazzi.unsafeUpdateConfig(deviceConfig = DeviceConfig.NEXUS_5)
+        paparazzi.snapshot {
+            LcarsFrame(Section.CLOCK, {}, 0, false) { ClockScreen(ClockViewModel(), ClockState()) }
+        }
+    }
 }

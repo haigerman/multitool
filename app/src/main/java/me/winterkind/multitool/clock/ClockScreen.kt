@@ -20,6 +20,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
+import me.winterkind.multitool.ui.LAutoText
 import me.winterkind.multitool.ui.LText
 import me.winterkind.multitool.ui.Lcars
 import me.winterkind.multitool.ui.LcarsPill
@@ -68,16 +69,20 @@ fun ClockScreen(vm: ClockViewModel, state: ClockState) {
     ) {
         LcarsSectionHeader("Atomuhr · PTB", Lcars.Orange)
 
-        LText(
-            if (state.synced) "Referenzzeit (synchronisiert)" else "Gerätezeit (nicht synchronisiert)",
-            size = 15.sp,
+        LAutoText(
+            if (state.synced) "Atomuhrzeit (PTB) – Gerät synchronisiert" else "Gerätezeit – noch nicht synchronisiert",
+            Modifier.fillMaxWidth(),
+            maxSize = 15.sp,
             color = if (state.synced) Lcars.Green else Lcars.Mars,
         )
-        LText(timeFmt.format(zoned), size = 72.sp, color = Lcars.Orange, weight = FontWeight.Bold)
+        LAutoText(
+            timeFmt.format(zoned), Modifier.fillMaxWidth(),
+            maxSize = 72.sp, minSize = 32.sp, color = Lcars.Orange, weight = FontWeight.Bold,
+        )
         LText("${dateFmt.format(zoned)}  ${zoneFmt.format(zoned)}", size = 18.sp, color = Lcars.Tan)
 
         LcarsPill(
-            label = if (state.syncing) "Abgleich läuft…" else "Mit Atomuhr abgleichen",
+            label = if (state.syncing) "Synchronisiere…" else "Mit Atomuhr synchronisieren",
             color = Lcars.Peach,
             enabled = !state.syncing,
             modifier = Modifier.fillMaxWidth(),
@@ -96,7 +101,7 @@ fun ClockScreen(vm: ClockViewModel, state: ClockState) {
         if (last == null) {
             LcarsReadout("Offset", "—")
             LText(
-                "Noch kein Abgleich. Die Uhr in der Kopfzeile zeigt die Gerätezeit.",
+                "Noch nicht synchronisiert. Die Uhr in der Kopfzeile zeigt die Gerätezeit.",
                 size = 14.sp, color = Lcars.Periwinkle,
             )
         } else {
@@ -110,7 +115,7 @@ fun ClockScreen(vm: ClockViewModel, state: ClockState) {
             LText(verdict.first, size = 15.sp, color = verdict.second)
             LcarsReadout("Laufzeit (RTT)", "${last.roundTripMs} ms")
             LcarsReadout("Genauigkeit", "± ${(last.roundTripMs + 1) / 2} ms")
-            LcarsReadout("Letzter Abgleich", state.lastSyncWallMs?.let(::formatTime) ?: "—")
+            LcarsReadout("Letzte Synchronisation", state.lastSyncWallMs?.let(::formatTime) ?: "—")
 
             Spacer(Modifier.height(4.dp))
             LcarsSectionHeader("Gegenstelle", Lcars.Sky)

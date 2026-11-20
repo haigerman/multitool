@@ -26,26 +26,14 @@ Android-App für Technikinteressierte im LCARS-Design (Star Trek: TNG/Voyager).
 
 ### GitHub Actions
 
-Jeder Push baut eine APK und hängt sie als Artefakt an den Workflow-Lauf. Tags `v*` erzeugen
-zusätzlich ein GitHub Release.
+- **Build APK** (`build.yml`): jeder Push baut eine signierte APK und hängt sie als Artefakt an
+  den Workflow-Lauf.
+- **Release** (`release.yml`): eine Änderung der Datei `VERSION` auf `main` (oder ein manueller
+  Start unter Actions → Release) baut die APK und veröffentlicht sie als GitHub Release
+  `vX.Y.Z`. Dort findet Obtainium die Updates.
 
-Für eine **signierte Release-APK** diese Repository-Secrets anlegen
-(Settings → Secrets and variables → Actions):
-
-| Secret | Inhalt |
-|---|---|
-| `KEYSTORE_BASE64` | Keystore-Datei, Base64-kodiert: `base64 -w0 release.jks` |
-| `KEYSTORE_PASSWORD` | Passwort des Keystores |
-| `KEY_ALIAS` | Alias des Schlüssels |
-| `KEY_PASSWORD` | Passwort des Schlüssels |
-
-Ohne `KEYSTORE_BASE64` baut der Workflow eine Debug-APK.
-
-Keystore erzeugen, falls noch keiner existiert:
-
-```bash
-keytool -genkeypair -v -keystore release.jks -alias intrepid -keyalg RSA -keysize 4096 -validity 10000
-```
+Benötigte Repository-Secrets, gleich wie in den anderen Projekten:
+`SIGNING_KEYSTORE_BASE64`, `SIGNING_KEYSTORE_PASSWORD`, `SIGNING_KEY_ALIAS`, `SIGNING_KEY_PASSWORD`.
 
 ## Lizenzen
 

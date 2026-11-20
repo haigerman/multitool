@@ -1,20 +1,16 @@
+# Baut bei jedem Push eine signierte APK und hängt sie als Artefakt an den Lauf.
+# Veröffentlichung für Obtainium übernimmt release.yml.
 name: Build APK
 
 on:
   push:
     branches: ["**"]
-    tags: ["v*"]
   pull_request:
   workflow_dispatch:
-
-permissions:
-  contents: write
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    env:
-      VERSION_CODE: ${{ github.run_number }}
     steps:
       - uses: actions/checkout@v4
 
@@ -25,54 +21,47 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
 
-      - name: Keystore aus Secret wiederherstellen
-        id: keystore
-        env:
-          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 || secrets.SIGNING_KEYSTORE_BASE64 || secrets.SIGNING_KEY || secrets.KEYSTORE }}
-          HAS_STORE_PW: ${{ (secrets.KEYSTORE_PASSWORD || secrets.SIGNING_STORE_PASSWORD || secrets.STORE_PASSWORD) && 'ja' || 'nein' }}
-          HAS_ALIAS: ${{ (secrets.KEY_ALIAS || secrets.SIGNING_KEY_ALIAS || secrets.ALIAS) && 'ja' || 'nein' }}
-          HAS_KEY_PW: ${{ (secrets.KEY_PASSWORD || secrets.SIGNING_KEY_PASSWORD) && 'ja' || 'nein (Keystore-Passwort wird verwendet)' }}
+      - name: Version aus der Datei VERSION lesen
+        id: version
         run: |
-          echo "Keystore-Passwort gesetzt: $HAS_STORE_PW"
-          echo "Key-Alias gesetzt:         $HAS_ALIAS"
-          echo "Key-Passwort gesetzt:      $HAS_KEY_PW"
-          if [ -n "$KEYSTORE_BASE64" ]; then
-            echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.jks"
-            echo "path=$RUNNER_TEMP/release.jks" >> "$GITHUB_OUTPUT"
-            echo "signed=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "::warning::Secret KEYSTORE_BASE64 fehlt – es wird nur eine Debug-APK gebaut."
-            echo "signed=false" >> "$GITHUB_OUTPUT"
+          NAME="$(tr -d '[:space:]' < VERSION)"
+          if ! [[ "$NAME" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
+            echo "VERSION muss das Format X.Y.Z haben, ist aber '$NAME'" >&2
+            exit 1
           fi
+          echo "name=$NAME" >> "$GITHUB_OUTPUT"
+          echo "code=$(( BASH_REMATCH[1] * 10000 + BASH_REMATCH[2] * 100 + BASH_REMATCH[3] ))" >> "$GITHUB_OUTPUT"
 
-      - name: Signierte Release-APK bauen
-        if: steps.keystore.outputs.signed == 'true'
+      - name: Signaturschlüssel bereitstellen
         env:
-          SIGNING_KEYSTORE_PATH: ${{ steps.keystore.outputs.path }}
-          SIGNING_STORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD || secrets.SIGNING_STORE_PASSWORD || secrets.STORE_PASSWORD }}
-          SIGNING_KEY_ALIAS: ${{ secrets.KEY_ALIAS || secrets.SIGNING_KEY_ALIAS || secrets.ALIAS }}
-          SIGNING_KEY_PASSWORD: ${{ secrets.KEY_PASSWORD || secrets.SIGNING_KEY_PASSWORD || secrets.KEYSTORE_PASSWORD || secrets.SIGNING_STORE_PASSWORD || secrets.STORE_PASSWORD }}
+          SIGNING_KEYSTORE_BASE64: ${{ secrets.SIGNING_KEYSTORE_BASE64 }}
         run: |
-          chmod +x gradlew
-          ./gradlew --no-daemon assembleRelease
-          mkdir -p out
-          cp app/build/outputs/apk/release/app-release.apk "out/IntrepidMultitool-${VERSION_CODE}.apk"
+          if [ -z "$SIGNING_KEYSTORE_BASE64" ]; then
+            echo "Secret SIGNING_KEYSTORE_BASE64 fehlt" >&2
+            exit 1
+          fi
+          echo "$SIGNING_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.jks"
 
-      - name: Debug-APK bauen
-        if: steps.keystore.outputs.signed != 'true'
+      - name: Signierte APK bauen
+        env:
+          SIGNING_KEYSTORE_PATH: ${{ runner.temp }}/release.jks
+          SIGNING_KEYSTORE_PASSWORD: ${{ secrets.SIGNING_KEYSTORE_PASSWORD }}
+          SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
+          SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
         run: |
           chmod +x gradlew
-          ./gradlew --no-daemon assembleDebug
+          ./gradlew --no-daemon assembleRelease \
+            -PversionName=${{ steps.version.outputs.name }} \
+            -PversionCode=${{ steps.version.outputs.code }}
           mkdir -p out
-          cp app/build/outputs/apk/debug/app-debug.apk "out/IntrepidMultitool-${VERSION_CODE}-debug.apk"
+          cp app/build/outputs/apk/release/app-release.apk "out/intrepid-multitool-${{ steps.version.outputs.name }}.apk"
+
+      - name: Signatur prüfen
+        run: |
+          APKSIGNER=$(ls "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail -1)
+          "$APKSIGNER" verify --print-certs out/*.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: IntrepidMultitool-${{ github.run_number }}
+          name: intrepid-multitool-${{ steps.version.outputs.name }}-${{ github.run_number }}
           path: out/*.apk
-
-      - name: GitHub Release (bei Tag v*)
-        if: startsWith(github.ref, 'refs/tags/v')
-        uses: softprops/action-gh-release@v2
-        with:
-          files: out/*.apk

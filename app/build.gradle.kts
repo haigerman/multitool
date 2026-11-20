@@ -18,15 +18,16 @@ android {
         applicationId = "me.winterkind.multitool"
         minSdk = 26
         targetSdk = 35
-        versionCode = (System.getenv("VERSION_CODE") ?: "1").toInt()
-        versionName = "0.1.${System.getenv("VERSION_CODE") ?: "0"}"
+        // Set by the workflows from the VERSION file: -PversionName=1.2.3 -PversionCode=10203
+        versionCode = (project.findProperty("versionCode") as String?)?.toInt() ?: 1
+        versionName = (project.findProperty("versionName") as String?) ?: "0.1.0"
     }
 
     signingConfigs {
         if (hasSigning) {
             create("release") {
                 storeFile = file(keystorePath!!)
-                storePassword = System.getenv("SIGNING_STORE_PASSWORD")
+                storePassword = System.getenv("SIGNING_KEYSTORE_PASSWORD")
                 keyAlias = System.getenv("SIGNING_KEY_ALIAS")
                 keyPassword = System.getenv("SIGNING_KEY_PASSWORD")
             }

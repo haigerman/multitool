@@ -27,9 +27,10 @@ android {
         if (hasSigning) {
             create("release") {
                 storeFile = file(keystorePath!!)
-                storePassword = System.getenv("SIGNING_KEYSTORE_PASSWORD")
-                keyAlias = System.getenv("SIGNING_KEY_ALIAS")
-                keyPassword = System.getenv("SIGNING_KEY_PASSWORD")
+                // trim(): secrets pasted with a trailing newline would otherwise fail
+                storePassword = System.getenv("SIGNING_KEYSTORE_PASSWORD")?.trim()
+                keyAlias = System.getenv("SIGNING_KEY_ALIAS")?.trim()
+                keyPassword = System.getenv("SIGNING_KEY_PASSWORD")?.trim()
             }
         }
     }

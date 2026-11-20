@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- LCARS-style elbow with three panels, inside the 72dp safe zone of a 108dp adaptive icon. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- elbow: vertical bar + top bar, outer corner rounded, inner corner concave -->
+    <path
+        android:fillColor="#FF9900"
+        android:pathData="M38,28 L82,28 L82,38 L52,38 A6,6 0 0,0 46,44 L46,56 L26,56 L26,40 A12,12 0 0,1 38,28 Z" />
+    <path
+        android:fillColor="#CC99CC"
+        android:pathData="M26,59 L46,59 L46,69 L26,69 Z" />
+    <path
+        android:fillColor="#9999FF"
+        android:pathData="M26,72 L46,72 L46,80 L26,80 Z" />
+    <!-- pill buttons -->
+    <path
+        android:fillColor="#FFCC99"
+        android:pathData="M58,46 L78,46 A5,5 0 0,1 78,56 L58,56 A5,5 0 0,1 58,46 Z" />
+    <path
+        android:fillColor="#FF9966"
+        android:pathData="M58,60 L78,60 A5,5 0 0,1 78,70 L58,70 A5,5 0 0,1 58,60 Z" />
+    <path
+        android:fillColor="#99CCFF"
+        android:pathData="M58,74 L70,74 A3,3 0 0,1 70,80 L58,80 A3,3 0 0,1 58,74 Z" />
+</vector>

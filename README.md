@@ -9,7 +9,7 @@ Android-App für Technikinteressierte im LCARS-Design (Star Trek: TNG/Voyager).
 ## Funktionen
 
 1. **Speedtest:** Ping, Jitter, Download und Upload gegen den eigenen Server
-   `home.winterkind.me` (Oracle Cloud, Niederlande). Die Server-Einrichtung steht in
+   `home.winterkind.me` (Oracle Cloud, Niederlande, Caddy). Die Server-Einrichtung steht in
    [server/README.md](server/README.md).
 2. **WiFi Scanner:** zeigt alle WLANs in Reichweite mit Kanal, Frequenz, Kanalbreite,
    Verschlüsselung, Wi-Fi-Standard und Signalstärke. Umschaltbar zwischen *Alle*, *2,4 GHz*,

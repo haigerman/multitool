@@ -105,7 +105,10 @@ class SpeedtestEngine(
             val chunk = Random.nextBytes(256 * 1024)
             val job = coroutineContext[Job]!!
             while (coroutineContext.isActive) {
-                val total = 64L * 1024 * 1024
+                // Moderate request size: some servers (Caddy, Apache) answer without reading the
+                // whole body and close the connection; a new request then simply follows.
+                val total = 16L * 1024 * 1024
+                var sent = 0L
                 val body = object : RequestBody() {
                     override fun contentType() = "application/octet-stream".toMediaType()
                     override fun contentLength() = total
@@ -117,6 +120,7 @@ class SpeedtestEngine(
                             sink.write(chunk, 0, n)
                             sink.flush()
                             counter.addAndGet(n.toLong())
+                            sent += n
                             left -= n
                         }
                     }
@@ -126,6 +130,9 @@ class SpeedtestEngine(
                 calls += call
                 try {
                     call.execute().use { resp -> check(resp.isSuccessful) { "Upload: HTTP ${resp.code}" } }
+                } catch (e: IOException) {
+                    // Server closed early after receiving data: fine, start the next request.
+                    if (sent == 0L || !job.isActive) throw e
                 } finally {
                     calls -= call
                 }

@@ -28,8 +28,14 @@ jobs:
       - name: Keystore aus Secret wiederherstellen
         id: keystore
         env:
-          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 || secrets.SIGNING_KEYSTORE_BASE64 || secrets.SIGNING_KEY || secrets.KEYSTORE }}
+          HAS_STORE_PW: ${{ (secrets.KEYSTORE_PASSWORD || secrets.SIGNING_STORE_PASSWORD || secrets.STORE_PASSWORD) && 'ja' || 'nein' }}
+          HAS_ALIAS: ${{ (secrets.KEY_ALIAS || secrets.SIGNING_KEY_ALIAS || secrets.ALIAS) && 'ja' || 'nein' }}
+          HAS_KEY_PW: ${{ (secrets.KEY_PASSWORD || secrets.SIGNING_KEY_PASSWORD) && 'ja' || 'nein (Keystore-Passwort wird verwendet)' }}
         run: |
+          echo "Keystore-Passwort gesetzt: $HAS_STORE_PW"
+          echo "Key-Alias gesetzt:         $HAS_ALIAS"
+          echo "Key-Passwort gesetzt:      $HAS_KEY_PW"
           if [ -n "$KEYSTORE_BASE64" ]; then
             echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.jks"
             echo "path=$RUNNER_TEMP/release.jks" >> "$GITHUB_OUTPUT"
@@ -43,9 +49,9 @@ jobs:
         if: steps.keystore.outputs.signed == 'true'
         env:
           SIGNING_KEYSTORE_PATH: ${{ steps.keystore.outputs.path }}
-          SIGNING_STORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-          SIGNING_KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
-          SIGNING_KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          SIGNING_STORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD || secrets.SIGNING_STORE_PASSWORD || secrets.STORE_PASSWORD }}
+          SIGNING_KEY_ALIAS: ${{ secrets.KEY_ALIAS || secrets.SIGNING_KEY_ALIAS || secrets.ALIAS }}
+          SIGNING_KEY_PASSWORD: ${{ secrets.KEY_PASSWORD || secrets.SIGNING_KEY_PASSWORD || secrets.KEYSTORE_PASSWORD || secrets.SIGNING_STORE_PASSWORD || secrets.STORE_PASSWORD }}
         run: |
           chmod +x gradlew
           ./gradlew --no-daemon assembleRelease

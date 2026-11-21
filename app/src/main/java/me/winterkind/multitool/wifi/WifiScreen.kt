@@ -8,7 +8,17 @@ import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Canvas
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandHorizontally
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkHorizontally
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -55,7 +65,7 @@ private val requiredPermissions: Array<String> = buildList {
 
 @Composable
 fun WifiScreen(vm: WifiViewModel, state: WifiState) =
-    WifiScreen(state, vm::selectBand, vm::scan, vm::onPermissionsGranted)
+    WifiScreen(state, vm::selectBand, vm::scan, vm::onPermissionsGranted, vm::select, vm::closeDetail)
 
 @Composable
 fun WifiScreen(
@@ -63,7 +73,10 @@ fun WifiScreen(
     onBand: (Band) -> Unit,
     onScan: () -> Unit,
     onPermissionsGranted: () -> Unit,
+    onSelect: (WifiNetwork) -> Unit = {},
+    onCloseDetail: () -> Unit = {},
     permissionCheck: ((String) -> Boolean)? = null,
+    animateDetail: Boolean = true,
 ) {
     val context = LocalContext.current
     fun hasPermissions() = requiredPermissions.all {
@@ -80,6 +93,48 @@ fun WifiScreen(
         if (granted) onPermissionsGranted() else launcher.launch(requiredPermissions)
     }
 
+    val selected = state.selected
+    AnimatedContent(
+        targetState = if (granted) selected else null,
+        contentKey = { it?.bssid },
+        transitionSpec = {
+            if (targetState != null) {
+                // Into the detail view: list folds away to the left, panels unfold from the left.
+                (fadeIn(tween(250, delayMillis = 150)) + expandHorizontally(tween(450), expandFrom = Alignment.Start))
+                    .togetherWith(fadeOut(tween(200)) + shrinkHorizontally(tween(350), shrinkTowards = Alignment.Start))
+            } else {
+                (fadeIn(tween(300, delayMillis = 100)) + slideInHorizontally(tween(400)) { -it / 3 })
+                    .togetherWith(fadeOut(tween(200)) + slideOutHorizontally(tween(350)) { it / 2 })
+            }
+        },
+        label = "wifi-detail",
+    ) { net ->
+        if (net != null) {
+            WifiDetailScreen(
+                n = net,
+                all = state.networks,
+                inRange = state.selectedInRange,
+                scanning = state.scanning,
+                onBack = onCloseDetail,
+                onScan = onScan,
+                animate = animateDetail,
+            )
+        } else {
+            WifiList(state, granted, context, launcher::launch, onBand, onScan, onSelect)
+        }
+    }
+}
+
+@Composable
+private fun WifiList(
+    state: WifiState,
+    granted: Boolean,
+    context: android.content.Context,
+    requestPermissions: (Array<String>) -> Unit,
+    onBand: (Band) -> Unit,
+    onScan: () -> Unit,
+    onSelect: (WifiNetwork) -> Unit,
+) {
     Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         LcarsSectionHeader("Sensorabtastung · WLAN", Lcars.Orange)
         LcarsSegmentSelector(
@@ -95,7 +150,7 @@ fun WifiScreen(
                 size = 15.sp, color = Lcars.Tan,
             )
             LcarsPill("Berechtigung erteilen", Lcars.Peach, Modifier.fillMaxWidth()) {
-                launcher.launch(requiredPermissions)
+                requestPermissions(requiredPermissions)
             }
             LcarsPill("App-Einstellungen", Lcars.Violet, Modifier.fillMaxWidth()) {
                 context.startActivity(
@@ -129,7 +184,7 @@ fun WifiScreen(
         }
 
         LazyColumn(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            items(state.visible, key = { it.bssid + it.frequency }) { NetworkRow(it) }
+            items(state.visible, key = { it.bssid + it.frequency }) { NetworkRow(it) { onSelect(it) } }
         }
     }
 }
@@ -142,14 +197,19 @@ private fun signalColor(rssi: Int): Color = when {
 }
 
 @Composable
-private fun NetworkRow(n: WifiNetwork) {
+private fun NetworkRow(n: WifiNetwork, onClick: () -> Unit) {
     val bandColor = when (n.band) {
         Band.B24 -> Lcars.Peach
         Band.B5 -> Lcars.Lilac
         Band.B6 -> Lcars.Sky
         Band.ALL -> Lcars.Tan
     }
-    Row(Modifier.fillMaxWidth().height(62.dp)) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .height(62.dp)
+            .clickable(onClick = onClick)
+    ) {
         Box(
             Modifier
                 .width(14.dp)

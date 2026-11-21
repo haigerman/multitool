@@ -13,7 +13,11 @@ Android-App für Technikinteressierte im LCARS-Design (Star Trek: TNG/Voyager).
    [server/README.md](server/README.md).
 2. **WiFi Scanner:** zeigt alle WLANs in Reichweite mit Kanal, Frequenz, Kanalbreite,
    Verschlüsselung, Wi-Fi-Standard und Signalstärke. Umschaltbar zwischen *Alle*, *2,4 GHz*,
-   *5 GHz* und *6 GHz*, mit Kanalbelegungs-Diagramm pro Band.
+   *5 GHz* und *6 GHz*, mit Kanalbelegungs-Diagramm pro Band. Ein Tipp auf ein Netz öffnet die
+   Detailanalyse: Signal, Frequenzbereich, Standard und Antennen-Streams, Kanalbelegung und
+   Auslastung, Sicherheit (WPA2/WPA3, Management-Frame-Schutz, WPS), Roaming (802.11k/r/v),
+   Hersteller (IEEE-OUI-Datenbank), Gerätemodell aus WPS, vermuteter Chipsatz und eine
+   Schätzung der erreichbaren Bandbreite.
 3. **Atomuhr:** gleicht die Uhr in der Kopfzeile per SNTP mit den Stratum-1-Zeitservern der
    Physikalisch-Technischen Bundesanstalt (`ptbtime1–3.ptb.de`) ab. Angezeigt werden Offset,
    Laufzeit und Genauigkeit.
@@ -35,7 +39,12 @@ Android-App für Technikinteressierte im LCARS-Design (Star Trek: TNG/Voyager).
 Benötigte Repository-Secrets, gleich wie in den anderen Projekten:
 `SIGNING_KEYSTORE_BASE64`, `SIGNING_KEYSTORE_PASSWORD`, `SIGNING_KEY_ALIAS`, `SIGNING_KEY_PASSWORD`.
 
+Die App hält den Bildschirm an, solange sie im Vordergrund ist.
+
 ## Lizenzen
+
+Hersteller-Datenbank: IEEE OUI-Register über das npm-Paket *oui-data* (BSD-2-Clause,
+`app/src/main/assets/oui-LICENSE.txt`).
 
 Schrift *Antonio* (Vernon Adams) unter der SIL Open Font License 1.1.
 Star Trek und LCARS sind Marken von CBS Studios / Paramount. Dies ist ein privates Fanprojekt

@@ -303,9 +303,16 @@ fun LcarsSectionHeader(title: String, color: Color = Lcars.Lilac, modifier: Modi
     }
 }
 
-/** Label/value pair as used in LCARS readouts. */
+/** Label/value pair as used in LCARS readouts; long values move below the label. */
 @Composable
 fun LcarsReadout(label: String, value: String, valueColor: Color = Lcars.Tan, modifier: Modifier = Modifier) {
+    if (label.length + value.length > 34) {
+        Column(modifier.fillMaxWidth()) {
+            LText(label, size = 15.sp, color = Lcars.Periwinkle, maxLines = 1)
+            LText(value, size = 18.sp, color = valueColor, align = TextAlign.End, modifier = Modifier.fillMaxWidth())
+        }
+        return
+    }
     Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.Bottom) {
         LText(label, size = 15.sp, color = Lcars.Periwinkle, modifier = Modifier.weight(1f), maxLines = 1)
         LText(value, size = 18.sp, color = valueColor, align = TextAlign.End, maxLines = 1)

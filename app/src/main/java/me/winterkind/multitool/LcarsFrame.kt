@@ -1,5 +1,7 @@
 package me.winterkind.multitool
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -15,6 +17,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -35,8 +39,13 @@ fun LcarsFrame(
     onSelect: (Section) -> Unit,
     offsetMs: Long,
     synced: Boolean,
+    /** Frame colour; changes with a smooth transition (e.g. band colour in the WiFi detail view). */
+    accent: Color = Lcars.Orange,
+    /** Code shown in the top elbow, defaults to the section's. */
+    code: String = section.code,
     content: @Composable () -> Unit,
 ) {
+    val frameColor by animateColorAsState(accent, tween(700), label = "frame")
     Column(
         Modifier
             .fillMaxSize()
@@ -44,25 +53,25 @@ fun LcarsFrame(
             .safeDrawingPadding()
             .padding(horizontal = 8.dp, vertical = 6.dp)
     ) {
-        Header(section, offsetMs, synced)
+        Header(code, offsetMs, synced, frameColor)
         Spacer(Modifier.height(Lcars.Gap))
         Row(Modifier.weight(1f)) {
-            Sidebar(section, onSelect)
+            Sidebar(section, onSelect, frameColor)
             Spacer(Modifier.width(14.dp))
             Box(Modifier.weight(1f).padding(top = 6.dp)) { content() }
         }
         Spacer(Modifier.height(Lcars.Gap))
-        Footer()
+        Footer(frameColor)
     }
 }
 
 @Composable
-private fun Header(section: Section, offsetMs: Long, synced: Boolean) {
+private fun Header(code: String, offsetMs: Long, synced: Boolean, color: Color) {
     val now = rememberTickingTime(offsetMs)
     Box(Modifier.fillMaxWidth().height(96.dp)) {
         LcarsElbow(
             Modifier.fillMaxSize(),
-            color = Lcars.Orange,
+            color = color,
             top = true,
             segments = listOf(0.55f to Lcars.Tan, 0.62f to Lcars.Lilac),
         )
@@ -74,10 +83,10 @@ private fun Header(section: Section, offsetMs: Long, synced: Boolean) {
                 .background(Lcars.Black)
                 .padding(start = 10.dp)
         ) {
-            LText("Intrepid Multitool", size = 26.sp, color = Lcars.Orange, weight = FontWeight.Bold, maxLines = 1)
+            LText("Intrepid Multitool", size = 26.sp, color = color, weight = FontWeight.Bold, maxLines = 1)
         }
         LText(
-            "LCARS ${section.code}",
+            "LCARS $code",
             size = 14.sp,
             color = Lcars.Black,
             weight = FontWeight.Bold,
@@ -98,7 +107,7 @@ private fun Header(section: Section, offsetMs: Long, synced: Boolean) {
 }
 
 @Composable
-private fun Sidebar(selected: Section, onSelect: (Section) -> Unit) {
+private fun Sidebar(selected: Section, onSelect: (Section) -> Unit, accent: Color) {
     val colors = listOf(Lcars.Peach, Lcars.Lilac, Lcars.Periwinkle)
     Column(Modifier.fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(Lcars.Gap)) {
         Section.entries.forEachIndexed { i, s ->
@@ -112,16 +121,16 @@ private fun Sidebar(selected: Section, onSelect: (Section) -> Unit) {
         }
         // Decorative filler blocks with "random" LCARS numbers.
         LcarsBlock("47-${LocalDate.now().dayOfYear}", Lcars.Violet, height = 40.dp)
-        LcarsBlock("NCC-74656", Lcars.Orange, Modifier.weight(1f), height = 40.dp)
+        LcarsBlock("NCC-74656", accent, Modifier.weight(1f), height = 40.dp)
     }
 }
 
 @Composable
-private fun Footer() {
+private fun Footer(color: Color) {
     Box(Modifier.fillMaxWidth().height(44.dp)) {
         LcarsElbow(
             Modifier.fillMaxSize(),
-            color = Lcars.Orange,
+            color = color,
             top = false,
             barHeight = 14.dp,
             innerRadius = 14.dp,

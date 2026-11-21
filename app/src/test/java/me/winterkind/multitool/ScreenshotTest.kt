@@ -18,7 +18,11 @@ import me.winterkind.multitool.speedtest.SpeedtestScreen
 import me.winterkind.multitool.speedtest.SpeedtestState
 import me.winterkind.multitool.speedtest.SpeedtestViewModel
 import me.winterkind.multitool.wifi.Band
+import me.winterkind.multitool.wifi.IeParser
+import me.winterkind.multitool.wifi.IeParserTest
+import me.winterkind.multitool.wifi.WifiDetailScreen
 import me.winterkind.multitool.wifi.WifiNetwork
+import me.winterkind.multitool.wifi.bandColor
 import me.winterkind.multitool.wifi.WifiScreen
 import me.winterkind.multitool.wifi.WifiState
 import org.junit.Rule
@@ -68,6 +72,23 @@ class ScreenshotTest {
                 {}, {}, {}, permissionCheck = { true },
             )
         }
+        }
+    }
+
+    @Test
+    fun wifiDetail() {
+        paparazzi.unsafeUpdateConfig(deviceConfig = DeviceConfig.PIXEL_6.copy(screenHeight = 4200))
+        paparazzi.snapshot {
+            val ie = IeParser.parse(IeParserTest().sampleIes())
+            val n = WifiNetwork(
+                "Intrepid-Bridge", "38:10:d5:12:34:56", -52, 5500, 100, Band.B5, 80, "WPA2/WPA3", "Wi-Fi 6",
+                centerFreq0 = 5530, capabilities = "[WPA2-PSK-CCMP][RSN-PSK+SAE-CCMP][ESS][WPS][MFPC]",
+                lastSeenMs = 1_700_000_000_000, ie = ie,
+            )
+            val neighbour = WifiNetwork("Nachbar", "aa:00:00:00:00:02", -71, 5540, 108, Band.B5, 20, "WPA2", "Wi-Fi 5")
+            LcarsFrame(Section.WIFI, {}, 0, false, accent = bandColor(n.band), code = "02-Ziel") {
+                WifiDetailScreen(n, listOf(n, neighbour), inRange = true, scanning = false, onBack = {}, onScan = {}, animate = false)
+            }
         }
     }
 

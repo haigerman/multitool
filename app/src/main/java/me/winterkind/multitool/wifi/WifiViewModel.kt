@@ -10,9 +10,13 @@ import android.location.LocationManager
 import android.net.wifi.ScanResult
 import android.net.wifi.WifiManager
 import android.os.Build
+import android.os.SystemClock
 import androidx.core.content.ContextCompat
 import androidx.core.location.LocationManagerCompat
 import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -30,6 +34,16 @@ data class WifiNetwork(
     val widthMhz: Int,
     val security: String,
     val standard: String?,
+    val centerFreq0: Int = 0,
+    val centerFreq1: Int = 0,
+    val capabilities: String = "",
+    /** Wall-clock time the AP was last seen (from the scan timestamp). */
+    val lastSeenMs: Long? = null,
+    val rttResponder: Boolean = false,
+    val passpoint: Boolean = false,
+    val operatorName: String? = null,
+    val venueName: String? = null,
+    val ie: IeInfo = IeInfo(),
 )
 
 data class WifiState(
@@ -40,8 +54,15 @@ data class WifiState(
     val wifiEnabled: Boolean = true,
     val locationEnabled: Boolean = true,
     val message: String? = null,
+    /** BSSID of the network shown in the detail view, null = list. */
+    val selectedBssid: String? = null,
+    /** Last known data of the selected network (kept if it drops out of a later scan). */
+    val selectedSnapshot: WifiNetwork? = null,
+    val ouiLoaded: Boolean = false,
 ) {
     val visible get() = if (band == Band.ALL) networks else networks.filter { it.band == band }
+    val selected: WifiNetwork? get() = selectedBssid?.let { b -> networks.firstOrNull { it.bssid == b } ?: selectedSnapshot }
+    val selectedInRange: Boolean get() = selectedBssid != null && networks.any { it.bssid == selectedBssid }
 }
 
 class WifiViewModel(app: Application) : AndroidViewModel(app) {
@@ -59,6 +80,17 @@ class WifiViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun selectBand(band: Band) = _state.update { it.copy(band = band) }
+
+    fun select(n: WifiNetwork) = _state.update { it.copy(selectedBssid = n.bssid, selectedSnapshot = n) }
+
+    fun closeDetail() = _state.update { it.copy(selectedBssid = null, selectedSnapshot = null) }
+
+    init {
+        viewModelScope.launch(Dispatchers.IO) {
+            runCatching { OuiDatabase.load(getApplication()) }
+            _state.update { it.copy(ouiLoaded = true) }
+        }
+    }
 
     /** Called once permissions are granted. */
     fun onPermissionsGranted() {
@@ -107,6 +139,7 @@ class WifiViewModel(app: Application) : AndroidViewModel(app) {
         _state.update {
             it.copy(
                 networks = list,
+                selectedSnapshot = it.selectedBssid?.let { b -> list.firstOrNull { n -> n.bssid == b } } ?: it.selectedSnapshot,
                 scanning = false,
                 lastScanMs = System.currentTimeMillis(),
                 message = message ?: it.message.takeIf { _ -> list.isEmpty() },
@@ -166,6 +199,17 @@ private fun ScanResult.toNetwork(): WifiNetwork {
             else -> null
         }
     } else null
+    val ies = if (Build.VERSION.SDK_INT >= 30) {
+        runCatching {
+            informationElements.map { e ->
+                val buf = e.bytes
+                val arr = ByteArray(buf.remaining())
+                buf.duplicate().get(arr)
+                RawIe(e.id, e.idExt, arr)
+            }
+        }.getOrDefault(emptyList())
+    } else emptyList()
+    val seen = System.currentTimeMillis() - (SystemClock.elapsedRealtime() - timestamp / 1000)
     return WifiNetwork(
         ssid = name.ifBlank { "‹verborgen›" },
         bssid = BSSID ?: "",
@@ -176,5 +220,14 @@ private fun ScanResult.toNetwork(): WifiNetwork {
         widthMhz = width,
         security = security,
         standard = standard,
+        centerFreq0 = centerFreq0,
+        centerFreq1 = centerFreq1,
+        capabilities = caps,
+        lastSeenMs = seen,
+        rttResponder = is80211mcResponder,
+        passpoint = isPasspointNetwork,
+        operatorName = operatorFriendlyName?.toString()?.takeIf { it.isNotBlank() },
+        venueName = venueName?.toString()?.takeIf { it.isNotBlank() },
+        ie = IeParser.parse(ies),
     )
 }

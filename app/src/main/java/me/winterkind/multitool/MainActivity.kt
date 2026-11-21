@@ -1,6 +1,7 @@
 package me.winterkind.multitool
 
 import android.os.Bundle
+import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
@@ -16,7 +17,9 @@ import me.winterkind.multitool.clock.ClockScreen
 import me.winterkind.multitool.clock.ClockViewModel
 import me.winterkind.multitool.speedtest.SpeedtestScreen
 import me.winterkind.multitool.speedtest.SpeedtestViewModel
+import me.winterkind.multitool.ui.Lcars
 import me.winterkind.multitool.wifi.WifiScreen
+import me.winterkind.multitool.wifi.bandColor
 import me.winterkind.multitool.wifi.WifiViewModel
 
 enum class Section(val code: String, val title: String) {
@@ -33,25 +36,39 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
+        // Keep the display on while the app is visible; the flag only applies to this window,
+        // so the phone sleeps normally as soon as the app goes to the background.
+        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         setContent { App() }
     }
 
     @Composable
     private fun App() {
         var section by rememberSaveable { mutableStateOf(Section.SPEEDTEST) }
-        BackHandler(section != Section.SPEEDTEST) { section = Section.SPEEDTEST }
         val clock by clockVm.state.collectAsStateWithLifecycle()
+        val wifi by wifiVm.state.collectAsStateWithLifecycle()
+        val wifiDetail = section == Section.WIFI && wifi.selected != null
+        BackHandler(section != Section.SPEEDTEST) {
+            if (wifiDetail) wifiVm.closeDetail() else section = Section.SPEEDTEST
+        }
 
-        LcarsFrame(section, { section = it }, clock.offsetMs, clock.synced) {
+        LcarsFrame(
+            section,
+            onSelect = {
+                if (it == section && wifiDetail) wifiVm.closeDetail()
+                section = it
+            },
+            offsetMs = clock.offsetMs,
+            synced = clock.synced,
+            accent = wifi.selected?.takeIf { wifiDetail }?.let { bandColor(it.band) } ?: Lcars.Orange,
+            code = if (wifiDetail) "02-Ziel" else section.code,
+        ) {
             when (section) {
                 Section.SPEEDTEST -> {
                     val s by speedVm.state.collectAsStateWithLifecycle()
                     SpeedtestScreen(speedVm, s)
                 }
-                Section.WIFI -> {
-                    val s by wifiVm.state.collectAsStateWithLifecycle()
-                    WifiScreen(wifiVm, s)
-                }
+                Section.WIFI -> WifiScreen(wifiVm, wifi)
                 Section.CLOCK -> ClockScreen(clockVm, clock)
             }
         }
